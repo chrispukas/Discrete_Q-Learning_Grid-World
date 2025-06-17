@@ -21,7 +21,8 @@ root = tk.Tk()
 root.title('display')
 square_size = 50
 
-path = result[1]
+q_table = result[0]
+state_action_pairs = result[1]
 
 for row in range(5):
     for col in range(5):
@@ -36,7 +37,7 @@ for row in range(5):
                 colour = "blue"
             case _:
                 colour = "lightgray"
-        if (row, col) in path:
+        if any((row, col) in pair for pair in state_action_pairs):
             colour = "yellow"
 
         square = tk.Label(root, width=square_size//10, height=square_size//15, bg=colour, borderwidth=1, relief="solid")

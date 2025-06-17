@@ -7,8 +7,10 @@ from environment import print_env
 # ------------------------------
 
 learning_rate = 0.2
-exploration_probability = 0.9
-max_timestep_per_epoc = 200
+exploration_probability = 0.01
+gamma_discount = 0.9
+
+max_timestep_per_epoc = 300
 max_epochs = 800
 
 # ----------
@@ -18,7 +20,7 @@ max_epochs = 800
 current_timestep = 0
 current_epoch = 0
 
-state_table = []
+q_table = dict(dict())
 
 
 
@@ -28,8 +30,8 @@ state_table = []
 
 def run_agent(reward_table):
     # Creating a state table, to keep track of the rewards based on a specific state
-    global state_table
-    state_table = create_state_table()
+    global q_table
+    q_table = create_q_table(reward_table)
 
     result = None
 
@@ -41,95 +43,101 @@ def run_agent(reward_table):
 
     return result
 
+
+
+
+
 def epoch(reward_table):
     print(f"epoch {current_epoch}")
 
-    # Starting coordinate, representing the bottom right of the 2D array defined in the state table
+    # Starting coordinate, representing the bottom right of the 2D array defined in the reward table
     current_coordinate = (4,4)
-    path_taken = []
+    state_action_pairs = []
+
+    global current_timestep
 
     # Timestep counter, until maximum time is reached
-    for counter in range(max_timestep_per_epoc):
-        global current_timestep
-        current_timestep = counter
-        current_coordinate = timestep(reward_table, current_coordinate)
+    for current_timestep in range(max_timestep_per_epoc):
 
-        if current_coordinate == (0,0):
+        action, new_coordinate = timestep(current_coordinate)
+        state_action_pairs.append({current_coordinate: action})
+
+        if new_coordinate == (0,0):
+            print(f"Reached goal in {current_timestep} steps")
             break
 
-        path_taken.append(current_coordinate)
+        current_coordinate = new_coordinate
 
-    update_state_table(reward_table, path_taken)
-    print(state_table)
-    print(path_taken)
+    update_q_table(reward_table, state_action_pairs)
+    print(state_action_pairs)
 
-    return [state_table,path_taken]
+    return [q_table, state_action_pairs]
 
 
-def timestep(reward_table, current_coordinate):
-    lookup = get_q_values_for_coordinate(reward_table, current_coordinate)
-    action = select_action(lookup, exploration_probability)
+def timestep(current_coordinate):
+    global q_table
+    state = q_table[current_coordinate]
+
+    action = select_action(state, exploration_probability)
+    print(f"Selected action {action}")
+
     new_coordinate = (current_coordinate[0] + action[0], current_coordinate[1] + action[1])
+
     print(f"Selected {new_coordinate}")
-    return new_coordinate
-def update_state_table(reward_table, path_taken):
+    return action, new_coordinate
 
-    path_taken.reverse()
-    current_reward = reward_table[path_taken[0][0]][path_taken[0][1]]
 
-    for step in path_taken:
-        state_table[step[0]][step[1]] = current_reward
-        current_reward = current_reward + reward_table[step[0]][step[1]]
 
+
+def update_q_table(reward_table, state_action_pairs):
+    global q_table
+
+    state_action_pairs.reverse()
+    current_reward = 0
+
+    for idx, pair in enumerate(state_action_pairs):
+        state = list(pair.keys())[0]
+        action = list(pair.values())[0]
+
+        reward = reward_table[state[0]][state[1]]
+
+        # If it's the last in the episode (no next state), use reward only
+        if idx == 0:
+            next_max = 0
+        else:
+            next_state = list(state_action_pairs[idx - 1].keys())[0]
+            next_max = max(q_table[next_state].values())
+
+        old_value = q_table[state][action]
+        q_table[state][action] += learning_rate * (reward + gamma_discount * next_max - old_value)
 
 
 # Returns the new coordinate for the agent
-def select_action(lookup, exploration):
+def select_action(state, exploration_probability):
     rand = random.random()
-
-    # Prune data, removing all occurrences of -999
-    pruned_data = {k: v for k, v in lookup.items() if v != -999}
-
-    if exploration < rand:
-        return random.choice(list(pruned_data.keys()))
+    if exploration_probability > rand:
+        return random.choice(list(state.keys()))
     else:
-        max_val = max(pruned_data.values())
-        max_keys = [k for k, v in pruned_data.items() if v == max_val]
-        return random.choice(max_keys)
+        return max(state, key=state.get)
+    
+def create_q_table(reward_table):
+    table = dict() # Create a nested dictionary
 
-def get_q_values_for_coordinate(reward_table, current_coordinate):
-    # Look up, down, left, and right from the current coordinate, to determine the optimum path to take.
+    dirs = {(0, +1), (0, -1), (+1, 0), (-1, 0)}
 
-    up_val = get_coordinate_q_value(current_coordinate, (0, +1))
-    down_val = get_coordinate_q_value(current_coordinate, (0, -1))
-    left_val = get_coordinate_q_value(current_coordinate, (-1, 0))
-    right_val = get_coordinate_q_value(current_coordinate, (+1, 0))
+    for i, row in enumerate(reward_table):
+        for j, _ in enumerate(row):
+            table[(i,j)] = {}
 
-    # in the format [UP, DOWN, LEFT, RIGHT]
-    return {(0, 1): up_val, (0, -1): down_val, (-1, 0): left_val, (+1,0): right_val}
-
-def get_coordinate_q_value(current_coordinate, target_coordinate):
-    new_coordinate = [current_coordinate[0] + target_coordinate[0], current_coordinate[1] + target_coordinate[1]]
-    in_bounds = is_coordinate_in_bounds(new_coordinate)
-    if not in_bounds:
-        return -999
-    return state_table[new_coordinate[0]][new_coordinate[1]] # Within Bounds
-
-def create_state_table():
-    table = \
-        [
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0],
-        ]
+            # Cleanup, allows only valid actions
+            for dx, dy in dirs:
+                if is_coordinate_in_bounds(reward_table, (i + dx, j + dy)):
+                    table[(i,j)][(dx, dy)] = 0
     return table
 
-def is_coordinate_in_bounds(coordinate):
-    global state_table
-    env_height = len(state_table)
-    env_width = len(state_table[0])
+def is_coordinate_in_bounds(reward_table, coordinate):
+    env_height = len(reward_table)
+    env_width = len(reward_table[0])
 
     if coordinate[0] < 0 or coordinate[1] < 0:
         print(f"Coordinate out of bounds! {coordinate}")
