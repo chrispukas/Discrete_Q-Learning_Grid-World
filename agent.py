@@ -1,7 +1,5 @@
 import random
 
-from environment import print_env
-
 # ------------------------------
 # -- CONFIGURATION PARAMETERS --
 # ------------------------------
@@ -11,7 +9,13 @@ exploration_probability = 0.01
 gamma_discount = 0.9
 
 max_timestep_per_epoc = 300
-max_epochs = 800
+max_epochs = 200
+
+# -------------
+# -- METRICS --
+# -------------
+
+epoch_steps_pair = dict()
 
 # ----------
 # -- VARS --
@@ -37,11 +41,13 @@ def run_agent(reward_table):
 
     # O(n^2) time, iterating through each epoch, refining the state table, until a stable solution is met
     for counter in range(max_epochs):
-       global current_epoch
-       current_epoch = counter
-       result = epoch(reward_table)
+        global current_epoch
+        current_epoch = counter
+        result = epoch(reward_table)
 
-    return result
+        epoch_steps_pair[current_epoch] = len(result[1])
+
+    return result, {"epoch_steps": epoch_steps_pair}
 
 
 
@@ -77,35 +83,27 @@ def epoch(reward_table):
 def timestep(current_coordinate):
     global q_table
     state = q_table[current_coordinate]
-
     action = select_action(state, exploration_probability)
-    print(f"Selected action {action}")
-
     new_coordinate = (current_coordinate[0] + action[0], current_coordinate[1] + action[1])
 
-    print(f"Selected {new_coordinate}")
     return action, new_coordinate
-
-
 
 
 def update_q_table(reward_table, state_action_pairs):
     global q_table
-
     state_action_pairs.reverse()
-    current_reward = 0
 
-    for idx, pair in enumerate(state_action_pairs):
+    for pairid, pair in enumerate(state_action_pairs):
         state = list(pair.keys())[0]
         action = list(pair.values())[0]
 
         reward = reward_table[state[0]][state[1]]
 
-        # If it's the last in the episode (no next state), use reward only
-        if idx == 0:
+        #implemented q_learning formula
+        if pairid == 0:
             next_max = 0
         else:
-            next_state = list(state_action_pairs[idx - 1].keys())[0]
+            next_state = list(state_action_pairs[pairid - 1].keys())[0]
             next_max = max(q_table[next_state].values())
 
         old_value = q_table[state][action]
@@ -119,7 +117,7 @@ def select_action(state, exploration_probability):
         return random.choice(list(state.keys()))
     else:
         return max(state, key=state.get)
-    
+
 def create_q_table(reward_table):
     table = dict() # Create a nested dictionary
 
