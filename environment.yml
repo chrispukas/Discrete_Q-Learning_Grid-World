@@ -1,0 +1,10 @@
+name: dqn_env
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - ipykernel
+  - matplotlib
+  - seaborn
+  - numpy
+prefix: /opt/homebrew/anaconda3/envs/dqn_env
