@@ -3,12 +3,6 @@ from dataclasses import dataclass
 import numpy as np
 
 
-@dataclass
-class Tile:
-    weighted_value: int
-    move_value: int
-
-
 class Environment:
     def __init__(self):
         self.reward_table = self.create_reward_table()
@@ -16,10 +10,10 @@ class Environment:
 
     def create_reward_table(self):
         reward_table = np.array([[100, -1, -1, -1, -1],
-                                  [-1, -99, -99, -1, -1],
-                                  [-1, -99, -99, -1, -1],
+                                  [-1, -20, -20, -1, -1],
+                                  [-1, -20, -20, -1, -1],
                                   [-1, -1, -1, -1, -1],
-                                  [-1, -1, -1, -1, -20],])
+                                  [-1, -1, -1, -1, -1],])
         return reward_table
 
     def get_reward(self, state):
@@ -36,6 +30,18 @@ class Environment:
             print('\n')
             for cell in row:
                 print(self.ascii_cell_convert(cell), end=" ")
+
+    def get_q_map(self):
+        q_map = np.zeros(self.reward_table.shape)
+
+        for i, row in enumerate(self.reward_table):
+            for j, _ in enumerate(row):
+                if (i, j) in self.q_table:
+                    q_map[i, j] = np.max(list(self.q_table[(i, j)].values()))
+                else:
+                    q_map[i, j] = 0
+
+        return q_map
 
     def create_q_table(self):
         table = dict() # Create a nested dictionary
