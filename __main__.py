@@ -1,8 +1,8 @@
-import agent
+import dqn.src.agent as agent
 import tkinter as tk
 
-from display import plot_epochs
-from environment import create_reward_table, print_env
+from dqn.src.display import plot_epochs
+from dqn.src.environment import create_reward_table, print_env
 
 
 def main():
@@ -36,7 +36,7 @@ for row in range(5):
         match reward_value:
             case 100:
                 colour = "green"
-            case -999:
+            case -99:
                 colour = "red"
             case -20:
                 colour = "blue"

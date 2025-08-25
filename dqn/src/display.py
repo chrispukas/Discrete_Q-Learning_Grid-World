@@ -1,6 +1,8 @@
 import tkinter as tk
 import matplotlib.pyplot as plt
 
+import numpy as np
+
 
 
 def plot_epochs(metrics):
@@ -9,7 +11,7 @@ def plot_epochs(metrics):
     keys = list(epoch_steps_pair.keys())
     values = list(epoch_steps_pair.values())
 
-    plt.plot(keys, values)
+    plt.plot(keys, np.log(np.array(values)))
 
     # Labels and title
     plt.xlabel("epochs")
