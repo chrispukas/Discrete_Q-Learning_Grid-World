@@ -13,4 +13,4 @@ license = {text = "MIT"}
 dependencies = []
 
 [tool.setuptools.packages.find]
-where = ["dqn"]
+where = ["src"]
