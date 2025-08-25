@@ -5,14 +5,6 @@ from dqn.src.display import plot_epochs
 from dqn.src.environment import create_reward_table, print_env
 
 
-def main():
-    print("init")
-
-
-if __name__ == "__main__":
-    main()
-
-
 
 reward_table = create_reward_table()
 print_env(reward_table)
